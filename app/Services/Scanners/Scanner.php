@@ -6,6 +6,7 @@ use App\Repositories\SongRepository;
 use App\Services\SongService;
 use App\Values\Scanning\ScanConfiguration;
 use App\Values\Scanning\ScanResult;
+use App\Models\Song;
 use Symfony\Component\Finder\Finder;
 use Throwable;
 
@@ -22,6 +23,13 @@ abstract class Scanner
     protected function handleIndividualFile(string $path, ScanConfiguration $config): ScanResult
     {
         try {
+            $song_early = Song::query()->where('path', $path)->first();
+            $song_exists = $song_early !== null;
+            $is_file_same = $song_exists && ($song_early->mtime == get_mtime($path));
+            if($song_exists && $is_file_same && !$config->force){
+                return ScanResult::skipped($path);
+            }
+            
             $info = $this->fileScanner->scan($path);
             $song = $this->songService->createOrUpdateSongFromScan($info, $config);
 
